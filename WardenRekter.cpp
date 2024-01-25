@@ -1,15 +1,27 @@
 // Warden Rekter
 // Tested and working on Overwatch 2
-// Most information is taken from UnknownCheats, I myself have not conducted any specific reversal work/research
+
 #include <Windows.h>
 #include <TlHelp32.h>
-int main()
+
+UINT64 FindKiUserExceptionDispatcherAddress() {
+    HMODULE hNtdll = GetModuleHandle(L"ntdll.dll");
+    if (!hNtdll) {
+        return 0;
+    }
+    return reinterpret_cast<UINT64>(GetProcAddress(hNtdll, "KiUserExceptionDispatcher"));
+}
+
+BOOL APIENTRY DllMain(HMODULE mod, ULONG reason, UINT64 junk)
 {
+    if(reason != DLL_PROCESS_ATTACH) return false;
+    
+    UINT64 KiUserExceptionDispatcherAddrress = FindKiUserExceptionDispatcherAddress();
     // Disable KiUserExceptionDispatcher hook
     DWORD oldProtect;
-    VirtualProtect((PVOID)0x7FFE0300, 1, PAGE_EXECUTE_READWRITE, &oldProtect);
-    *(BYTE*)0x7FFE0300 = 0xC3;
-    VirtualProtect((PVOID)0x7FFE0300, 1, oldProtect, &oldProtect);
+    VirtualProtect((PVOID)KiUserExceptionDispatcherAddrress, 1, PAGE_EXECUTE_READWRITE, &oldProtect);
+    *(BYTE*)KiUserExceptionDispatcherAddrress = 0xC3;
+    VirtualProtect((PVOID)KiUserExceptionDispatcherAddrress, 1, oldProtect, &oldProtect);
 
     // Disable DbgBreakPoint and DbgUserBreakPoint integrity checks
     HMODULE hNtdll = GetModuleHandle(TEXT("ntdll.dll"));
@@ -52,5 +64,5 @@ int main()
 
     printf("Warden rekted with success!\n");
 
-    return 0;
+    return true;
 }
